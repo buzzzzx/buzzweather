@@ -1,6 +1,7 @@
 package com.buzzweather.android;
 
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -68,7 +69,7 @@ public class ChooseAreaFragment extends Fragment {
     /**
      * 选中的省份
      */
-    private Province selectedProvincce;
+    private Province selectedProvince;
 
     /**
      * 选中的城市
@@ -99,11 +100,17 @@ public class ChooseAreaFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (currentLevel == LEVEL_PROVINCE) {
-                    selectedProvincce = provinceList.get(position);
+                    selectedProvince = provinceList.get(position);
                     queryCities();
                 } else if (currentLevel == LEVEL_CITY) {
                     selectedCity = cityList.get(position);
                     queryCounties();
+                } else if (currentLevel == LEVEL_COUNTY) {
+                    String weatherId = countyList.get(position).getWeatherId();
+                    Intent intent = new Intent(getActivity(), WeatherActivity.class);
+                    intent.putExtra("weather_id", weatherId);
+                    startActivity(intent);
+                    getActivity().finish();
                 }
             }
         });
@@ -147,9 +154,9 @@ public class ChooseAreaFragment extends Fragment {
      * 查询选中省内所有的市，优先从数据库查询，如果没有查询到再去服务器上查询
      */
     private void queryCities() {
-        titleText.setText(selectedProvincce.getProvinceName());
+        titleText.setText(selectedProvince.getProvinceName());
         backButton.setVisibility(View.VISIBLE);
-        cityList = DataSupport.where("provinceid = ?", String.valueOf(selectedProvincce.getId())).find(City.class);
+        cityList = DataSupport.where("provinceid = ?", String.valueOf(selectedProvince.getId())).find(City.class);
         if (cityList.size() > 0) {
             dataList.clear();
             for (City city : cityList) {
@@ -159,8 +166,8 @@ public class ChooseAreaFragment extends Fragment {
             listView.setSelection(0);
             currentLevel = LEVEL_CITY;
         } else {
-            int provinceCode = selectedProvincce.getProvinceCode();
-            String address = "http://guolin.tech/api/china" + provinceCode;
+            int provinceCode = selectedProvince.getProvinceCode();
+            String address = "http://guolin.tech/api/china/" + provinceCode;
             queryFromServer(address, "city");
         }
     }
@@ -181,9 +188,9 @@ public class ChooseAreaFragment extends Fragment {
             listView.setSelection(0);
             currentLevel = LEVEL_COUNTY;
         } else {
-            int provinceCode = selectedProvincce.getProvinceCode();
+            int provinceCode = selectedProvince.getProvinceCode();
             int cityCode = selectedCity.getCityCode();
-            String address = "http://guolin.tech/api/china" + provinceCode + "/" + cityCode;
+            String address = "http://guolin.tech/api/china/" + provinceCode + "/" + cityCode;
             queryFromServer(address, "county");
         }
     }
@@ -215,7 +222,7 @@ public class ChooseAreaFragment extends Fragment {
                 if ("province".equals(type)) {
                     result = Utility.handleProvinceResponse(responseText);
                 } else if ("city".equals(type)) {
-                    result = Utility.handleCityResponse(responseText, selectedProvincce.getId());
+                    result = Utility.handleCityResponse(responseText, selectedProvince.getId());
                 } else if ("county".equals(type)) {
                     result = Utility.handleConutyResponse(responseText, selectedCity.getId());
                 }
